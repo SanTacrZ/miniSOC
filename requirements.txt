@@ -1,0 +1,4 @@
+# Meta requirements — usar venv .venv
+-r api/requirements.txt
+-r siem/requirements.txt
+-r cloud_audit/requirements.txt

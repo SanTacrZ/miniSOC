@@ -1,0 +1,11 @@
+title: "Privilege Escalation Attempt API"
+id: SOC-003-priv-esc
+level: medium
+status: stable
+description: "Viewer/analyst probing admin endpoints — T1548"
+tags: ["attack.privilege_escalation", "attack.t1548"]
+detection:
+  selection:
+    action|contains: "/admin"
+    status_code: 403
+  condition: selection | count() by actor > 3

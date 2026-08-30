@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Logs + state
+logs/*.jsonl
+logs/*.log
+logs/*.hash*
+logs/blocklist.json
+logs/revoked.jsonl
+alerts/*.json
+alerts/*.jsonl
+infra/keys/*.key
+infra/keys/*.pub
+infra/users.json
+
+# OS
+.DS_Store
+*.swp
+*~
+
+# IDE
+.vscode/
+.idea/
+
+# Secrets
+.env

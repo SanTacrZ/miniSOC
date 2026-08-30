@@ -1,0 +1,10 @@
+title: "Suspicious Large Payload / Exfil"
+id: SOC-004-large-payload
+level: medium
+status: stable
+description: "Note with shell chars or bytes_out >50k — T1041 / T1059"
+tags: ["attack.exfiltration", "attack.t1041"]
+detection:
+  selection:
+    action: suspicious_note
+  condition: selection

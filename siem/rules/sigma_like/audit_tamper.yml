@@ -1,0 +1,10 @@
+title: "Audit Tamper / Journal Clear"
+id: SOC-005-journal-clear
+level: high
+status: stable
+description: "Journal clear or audit deletion — T1070"
+tags: ["attack.defense_evasion", "attack.t1070"]
+detection:
+  selection:
+    action|contains: "journal_clear"
+  condition: selection

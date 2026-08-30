@@ -1,0 +1,55 @@
+# RBAC — AC-3, AC-5, AC-6 Least Privilege
+# Deny-by-default. Each role inherits lower? No—explicit list (least privilege).
+roles:
+  viewer:
+    description: "Solo lectura (SOC L1 triage)"
+    permissions:
+      - "read:records"
+      - "read:own_profile"
+    mfa_required: false
+
+  analyst:
+    description: "Investigación + hunting"
+    permissions:
+      - "read:records"
+      - "write:records"
+      - "read:audit"
+      - "read:alerts"
+      - "read:own_profile"
+    mfa_required: true
+    inherits: []
+
+  responder:
+    description: "Containment actions"
+    permissions:
+      - "read:records"
+      - "write:records"
+      - "read:audit"
+      - "read:alerts"
+      - "write:contain"
+      - "read:own_profile"
+    mfa_required: true
+
+  admin:
+    description: "Full IAM + admin"
+    permissions:
+      - "read:records"
+      - "write:records"
+      - "read:audit"
+      - "read:alerts"
+      - "write:contain"
+      - "read:users"
+      - "write:users"
+      - "read:own_profile"
+    mfa_required: true
+
+# Mapping endpoint -> required permission
+endpoints:
+  "GET /records": "read:records"
+  "POST /records": "write:records"
+  "GET /records/{id}": "read:records"
+  "GET /audit/search": "read:audit"
+  "GET /alerts": "read:alerts"
+  "POST /admin/users": "write:users"
+  "GET /admin/users": "read:users"
+  "POST /contain": "write:contain"

@@ -1,0 +1,14 @@
+title: "Brute Force API Login"
+id: SOC-001-brute-force
+level: medium
+status: stable
+description: "5 failed auth from same IP in 60s — T1110"
+tags: ["attack.credential_access", "attack.t1110"]
+detection:
+  selection:
+    svc: api
+    action: auth_fail
+    result: fail
+  condition: selection | count() by src_ip > 5 within 60s
+falsepositives:
+  - "user typo"
