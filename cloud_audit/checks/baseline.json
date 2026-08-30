@@ -1,0 +1,54 @@
+{
+  "baseline": "NIST SP 800-53 rev5 — CIS AWS Foundations",
+  "checks": [
+    {
+      "id": "IAM-001",
+      "title": "No wildcard Action:* on Resource:*",
+      "severity": "critical",
+      "nist": "AC-3, AC-6",
+      "rationale": "Least privilege violation — overprivileged role"
+    },
+    {
+      "id": "IAM-002",
+      "title": "Users inactive >45 days disabled",
+      "severity": "medium",
+      "nist": "AC-2(3)",
+      "rationale": "Stale accounts increase attack surface"
+    },
+    {
+      "id": "IAM-003",
+      "title": "MFA enabled for privileged roles",
+      "severity": "high",
+      "nist": "IA-2(1)",
+      "rationale": "AAL2 required for admin/analyst"
+    },
+    {
+      "id": "NET-001",
+      "title": "No 0.0.0.0/0 on port 22/3389",
+      "severity": "critical",
+      "nist": "SC-7",
+      "rationale": "Unrestricted SSH/RDP"
+    },
+    {
+      "id": "NET-002",
+      "title": "No unrestricted egress 0.0.0.0/0",
+      "severity": "medium",
+      "nist": "SC-7(3)",
+      "rationale": "Data exfiltration risk"
+    },
+    {
+      "id": "STO-001",
+      "title": "S3 buckets not public",
+      "severity": "critical",
+      "nist": "AC-3, SC-28",
+      "rationale": "Public storage = data breach"
+    },
+    {
+      "id": "STO-002",
+      "title": "Storage encrypted at rest",
+      "severity": "high",
+      "nist": "SC-28",
+      "rationale": "Encryption required"
+    }
+  ]
+}

@@ -26,3 +26,23 @@ Todas las notas en formato Keep a Changelog + SemVer. Repo: https://github.com/S
 - Docs NIST: `nist_mapping.md`, `architecture.md`, `threat_models.md`, `incident_playbooks.md`, `hunting_hypotheses.md`
 - Toolchain verificado con `.venv` (Python 3.14)
 
+
+## [0.3.0] - 2026-08-30 — Cloud Audit + Labs + Infra + Purple Verification
+
+### Added
+- `cloud_audit/` — 7 checks NIST (IAM-001/002/003, NET-001/002, STO-001/002) sobre `infra/terraform/main.tf` con misconfigs intencionales; `runner.py` emite `findings.json` → SIEM
+- `labs/rustyapa/` — wrapper instrumentado (`wrapper.py:9`), exploits graduados (`exploit.py:1`), README hunting; integrado con `siem/rules/sigma_like/rustyapa_exploit.yml`
+- `labs/scenarios/` — `brute_force.py`, `exfil.py` generadores sintéticos para SIEM
+- `infra/docker-compose.yml` — api:8000 + siem:8001 + rustyapa:11331 en `soc_net 10.20.0.0/24`
+- `infra/terraform/main.tf` — baseline con 4 FAIL críticos (0.0.0.0/0, public bucket, wildcard IAM) para auditar
+- `scripts/bootstrap_iam.sh`, `simulate_incident.sh`, `ship_logs.py`
+- `siem/Dockerfile`
+
+### Fixed
+- Paths `STORE_PATH` y `KEYS_DIR` corregidos a `SOC/infra/*` (4 niveles) — `user_repository.py:10`, `crypto.py:11`
+- Tests purple-team ahora 9/9 pass (`test_auth.py:1`, `test_repo_pattern.py:1`)
+
+### Verified (Purple Team)
+- `simulate_incident.sh all` → 10 alertas (SOC-001 medium, SOC-002 high x8, SOC-004 medium) + `cloud_audit` 3/7 FAIL
+- `pytest api/tests` 9 passed, SIEM engine poll OK, `simulate_incident brute-force/exfil/rustyapa-pwn` OK
+

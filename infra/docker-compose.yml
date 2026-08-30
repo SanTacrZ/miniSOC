@@ -1,0 +1,51 @@
+version: "3.9"
+services:
+  api:
+    build: ../api
+    container_name: minisoc-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../logs:/app/logs
+      - ../infra:/app/infra
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - soc_net
+    restart: unless-stopped
+
+  siem:
+    build:
+      context: ../siem
+      dockerfile: Dockerfile
+    container_name: minisoc-siem
+    ports:
+      - "8001:8001"
+    volumes:
+      - ../logs:/app/logs
+      - ../alerts:/app/alerts
+      - ../siem:/app/siem
+    command: python -m engine.engine
+    networks:
+      - soc_net
+
+  rustyapa:
+    image: ubuntu:25.10
+    container_name: minisoc-rustyapa
+    volumes:
+      - ../labs/rustyapa:/app
+      - ../../Downloads/rustyapa_77887986df09ee05.tar.gz:/tmp/rustyapa.tar.gz:ro
+    working_dir: /app
+    command: bash -c "tar -xzf /tmp/rustyapa.tar.gz -C /tmp && /tmp/static/RUSTyapa"
+    ports:
+      - "11331:5000"
+    privileged: true
+    networks:
+      - soc_net
+
+networks:
+  soc_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.20.0.0/24

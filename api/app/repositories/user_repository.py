@@ -7,7 +7,7 @@ import json, pathlib, time, threading
 from typing import Optional, List, Dict
 from .interfaces import IUserRepository
 
-STORE_PATH = pathlib.Path(__file__).parent.parent.parent / "infra" / "users.json"
+STORE_PATH = pathlib.Path(__file__).parent.parent.parent.parent / "infra" / "users.json"
 
 class FileUserRepository(IUserRepository):
     def __init__(self, store_path: pathlib.Path = STORE_PATH):

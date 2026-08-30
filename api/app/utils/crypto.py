@@ -8,7 +8,7 @@ import secrets, pathlib, base64
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 
-KEYS_DIR = pathlib.Path(__file__).parent.parent.parent / "infra" / "keys"
+KEYS_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "infra" / "keys"
 KEYS_DIR.mkdir(parents=True, exist_ok=True)
 PRIVATE_KEY_PATH = KEYS_DIR / "jwt_rs256.key"
 PUBLIC_KEY_PATH = KEYS_DIR / "jwt_rs256.pub"
