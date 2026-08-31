@@ -6,7 +6,9 @@ services:
       - "8000:8000"
     volumes:
       - ../logs:/app/logs
+      - ../logs:/logs
       - ../infra:/app/infra
+      - ../infra:/infra
       - ../infra/certs:/certs:ro
     environment:
       - PYTHONUNBUFFERED=1
@@ -24,9 +26,12 @@ services:
       - "8001:8001"
     volumes:
       - ../logs:/app/logs
+      - ../logs:/logs
       - ../alerts:/app/alerts
+      - ../alerts:/alerts
       - ../siem:/app/siem
       - ../infra/certs:/certs:ro
+      - ../infra:/infra:ro
     environment:
       - MTLS_ENABLED=false
     command: python -m engine.engine
@@ -39,7 +44,9 @@ services:
     container_name: minisoc-forwarder
     volumes:
       - ../logs:/app/logs
+      - ../logs:/logs
       - ../siem:/app/siem
+      - ../infra:/infra:ro
     working_dir: /app
     command: python siem/forwarder/opensearch_forwarder.py
     environment:
