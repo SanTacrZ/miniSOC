@@ -1,0 +1,3 @@
+sequence by user.name
+  [http where url.path like "/admin*" and http.response.status_code == 403] with runs=3
+ // T1548 — probing admin

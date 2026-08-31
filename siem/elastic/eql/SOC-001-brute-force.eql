@@ -1,0 +1,4 @@
+sequence by source.ip
+  [authentication where event.action == "auth_fail" and event.outcome == "fail"] with runs=5
+  till [authentication where event.action == "auth_success"]
+  // T1110 — 5 fails misma IP, opcional success posterior

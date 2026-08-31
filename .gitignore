@@ -32,3 +32,6 @@ infra/users.json
 
 # Secrets
 .env
+labs/evidence/*.json
+infra/certs/*.key
+infra/certs/*.srl

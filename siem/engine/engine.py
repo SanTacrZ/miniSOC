@@ -114,6 +114,21 @@ def check_sigma_rules(events: list[dict], rules: list[dict]):
                     alerts.append(emit_alert(rule, [e]))
     return alerts
 
+def try_auto_respond(alerts):
+    try:
+        from .responder import check_alerts_for_auto
+        # also direct run for current batch
+        for a in alerts:
+            try:
+                from .responder import run_playbook
+                run_playbook(a)
+            except Exception as e:
+                print(f"[!] auto-respond error {e}")
+        # plus sweep file-based
+        check_alerts_for_auto()
+    except Exception as e:
+        print(f"[!] soar hook error {e}")
+
 def poll_once():
     events=[]
     for p in LOG_PATHS + [RUSTY_LOG]:
@@ -135,13 +150,20 @@ def poll_once():
     if not events:
         return []
     rules = load_rules()
-    return check_sigma_rules(events, rules)
+    alerts = check_sigma_rules(events, rules)
+    # SOAR auto for batch (also called in main_loop, idempotent via marker)
+    try:
+        try_auto_respond(alerts)
+    except: pass
+    return alerts
 
 def main_loop(poll_interval=2):
-    print(f"[*] SIEM engine polling {LOG_PATHS} + {RUSTY_LOG}")
+    print(f"[*] SIEM engine polling {LOG_PATHS} + {RUSTY_LOG} + SOAR auto")
     while True:
         try:
-            poll_once()
+            alerts = poll_once()
+            if alerts:
+                try_auto_respond(alerts)
         except Exception as e:
             print(f"[!] engine error {e}")
         time.sleep(poll_interval)

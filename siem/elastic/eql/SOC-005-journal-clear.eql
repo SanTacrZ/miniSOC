@@ -1,0 +1,2 @@
+any where event.action == "journal_clear" or minisoc.action == "journal_clear"
+ // T1070 defense evasion

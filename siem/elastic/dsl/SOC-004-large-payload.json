@@ -1,0 +1,35 @@
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "bool": {
+            "should": [
+              {
+                "match": {
+                  "event.action": "suspicious_note"
+                }
+              },
+              {
+                "range": {
+                  "http.response.bytes": {
+                    "gt": 50000
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "meta": {
+    "rule_id": "SOC-004-large-payload",
+    "title": "Suspicious Large Payload / Exfil",
+    "level": "medium",
+    "mitre": [
+      "attack.exfiltration",
+      "attack.t1041"
+    ]
+  }
+}

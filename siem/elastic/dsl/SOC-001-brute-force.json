@@ -1,0 +1,42 @@
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "event.action": "auth_fail"
+          }
+        },
+        {
+          "match": {
+            "event.outcome": "fail"
+          }
+        }
+      ]
+    }
+  },
+  "meta": {
+    "rule_id": "SOC-001-brute-force",
+    "title": "Brute Force API Login",
+    "level": "medium",
+    "mitre": [
+      "attack.credential_access",
+      "attack.t1110"
+    ],
+    "condition": "count >5 per source.ip in 60s"
+  },
+  "aggs": {
+    "by_ip": {
+      "terms": {
+        "field": "source.ip"
+      },
+      "aggs": {
+        "count": {
+          "value_count": {
+            "field": "source.ip"
+          }
+        }
+      }
+    }
+  }
+}

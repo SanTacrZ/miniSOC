@@ -123,12 +123,12 @@ Todo queda **loggeado y versionado** — ideal para portfolio / entrevista SOC.
 
 ---
 
-## 8. Próximos pasos (roadmap)
+## 8. Próximos pasos (roadmap) — ✅ IMPLEMENTADO 2026-08-31
 
-- [ ] Integrar Wazuh / OpenSearch real (ahora engine Python ligero)
-- [ ] mTLS entre servicios
-- [ ] SOAR playbook auto-isolate (`siem/engine/responder.py`)
-- [ ] Exportar Sigma → Elastic
+- [x] Integrar Wazuh / OpenSearch real → `siem/forwarder/opensearch_forwarder.py:1`, `infra/docker-compose.yml:22` (opensearch, dashboards, forwarder, wazuh profile), `siem/dashboards/minisoc_ndjson.ndjson` — ver `siem/wazuh/README.md`, `docs/ROADMAP_IMPLEMENTADO.md#wazuh-opensearch-real`
+- [x] mTLS entre servicios → `infra/certs/generate_certs.sh:1` (CA 4096, SAN), `api/app/core/mtls.py:1`, `api/app/middleware/mtls.py:1`, `api/app/main.py:28`, `scripts/rotate_mtls.sh` — `infra/certs/README.md` — `MTLS_ENABLED=true` → `CERT_REQUIRED`
+- [x] SOAR playbook auto-isolate → `siem/engine/playbooks.yml:1` (3 playbooks), `siem/engine/responder.py:1` (block_ip, revoke_jti, snapshot, kill_rustyapa), `siem/engine/engine.py:117` auto-hook — `docs/ROADMAP_IMPLEMENTADO.md#soar-auto-isolate`
+- [x] Exportar Sigma → Elastic → `siem/tools/sigma_to_elastic.py:1` → `siem/elastic/dsl/*.json` + `siem/elastic/eql/*.eql` (5 reglas) — `siem/elastic/README.md`
 
 ---
 

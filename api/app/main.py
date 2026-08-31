@@ -21,13 +21,15 @@ from .rbac.decorator import get_current_user, require_permission
 from .middleware.audit import AuditMiddleware
 from .middleware.rate_limit import RateLimitMiddleware
 from .middleware.security_headers import SecurityHeadersMiddleware
+from .middleware.mtls import MTLSMiddleware
 from .auth.jwt import revoke_jti
 
 ensure_keys()
 
 app = FastAPI(title="Mini-SOC Secure API (Repository Pattern)", version="2.0.0",
-              description="NIST CSF 2.0 + Repository Pattern + Purple Team Verified")
+              description="NIST CSF 2.0 + Repository Pattern + Purple Team Verified + mTLS")
 
+app.add_middleware(MTLSMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(AuditMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)

@@ -1,0 +1,47 @@
+# SOAR Playbooks — NIST IR-4, SP 800-61r2
+# Cada playbook se dispara por regla y ejecuta acciones con guardrails
+playbooks:
+  - id: PB-BF-AUTO
+    name: "Auto-isolate brute-force source"
+    trigger:
+      rule_id: SOC-001-brute-force
+      severity: medium
+      min_events: 5
+    actions:
+      - type: block_ip
+        ttl: 900
+        params: { src_ip: "{{event.src_ip}}" }
+      - type: revoke_jti
+        when: "{{event.action}} == 'auth_mfa_fail'"
+      - type: snapshot_evidence
+        params: { dest: "labs/evidence/auto-{{alert.alert_id}}", include: "logs/siem.jsonl" }
+      - type: notify
+        params: { channel: "stdout", message: "[SOAR] Isolated {{event.src_ip}} for brute-force" }
+    auto: false  # cambia a true para ejecución automática (requiere approval en prod)
+    mitre: ["T1110"]
+
+  - id: PB-RUSTYAPA-AUTO
+    name: "Containment Rustyapa exploit"
+    trigger:
+      rule_id: SOC-002-rustyapa-exploit
+      severity: high
+    actions:
+      - type: block_ip
+        ttl: 3600
+      - type: kill_rustyapa  # wrapper kill + restart
+      - type: snapshot_evidence
+        params: { dest: "labs/evidence/rustyapa-{{alert.alert_id}}" }
+      - type: notify
+        params: { channel: "stdout", message: "[SOAR] Rustyapa container restarted, IP {{event.src_ip}} blocked" }
+    auto: true
+
+  - id: PB-PRIVESC-AUTO
+    name: "Revoke on priv-esc probe"
+    trigger:
+      rule_id: SOC-003-priv-esc
+      severity: medium
+    actions:
+      - type: revoke_jti
+      - type: notify
+        params: { channel: "stdout", message: "[SOAR] Priv-esc attempt by {{event.actor}} — revoked" }
+    auto: false

@@ -8,8 +8,12 @@ services:
     volumes:
       - ../logs:/app/logs
       - ../infra:/app/infra
+      - ../infra/certs:/certs:ro
     environment:
       - PYTHONUNBUFFERED=1
+      - MTLS_ENABLED=false  # cambia a true para exigir client cert
+    # Para forzar mTLS descomenta:
+    # command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --ssl-certfile /certs/api.crt --ssl-keyfile /certs/api.key --ssl-ca-certs /certs/ca.crt --ssl-cert-reqs 2
     networks:
       - soc_net
     restart: unless-stopped
@@ -25,9 +29,83 @@ services:
       - ../logs:/app/logs
       - ../alerts:/app/alerts
       - ../siem:/app/siem
+      - ../infra/certs:/certs:ro
+    environment:
+      - MTLS_ENABLED=false
     command: python -m engine.engine
     networks:
       - soc_net
+
+  forwarder:
+    image: python:3.14-slim
+    container_name: minisoc-forwarder
+    volumes:
+      - ../logs:/app/logs
+      - ../siem:/app/siem
+    working_dir: /app
+    command: python siem/forwarder/opensearch_forwarder.py
+    environment:
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+      - OPENSEARCH_INDEX=minisoc-siem
+    depends_on:
+      - opensearch
+    networks:
+      - soc_net
+    restart: unless-stopped
+
+  opensearch:
+    image: opensearchproject/opensearch:2.15.0
+    container_name: minisoc-opensearch
+    environment:
+      - cluster.name=minisoc-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - plugins.security.disabled=true
+      - DISABLE_SECURITY_PLUGIN=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    networks:
+      - soc_net
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.15.0
+    container_name: minisoc-dashboards
+    ports:
+      - "5601:5601"
+    environment:
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    depends_on:
+      - opensearch
+    networks:
+      - soc_net
+
+  wazuh:
+    image: wazuh/wazuh-manager:4.9.0
+    container_name: minisoc-wazuh
+    ports:
+      - "1514:1514"
+      - "55000:55000"
+    environment:
+      - WAZUH_MANAGER_NAME=wazuh.manager
+    volumes:
+      - wazuh-data:/var/ossec/data
+    networks:
+      - soc_net
+    profiles:
+      - wazuh  # levanta con --profile wazuh
 
   rustyapa:
     image: ubuntu:25.10
@@ -42,6 +120,10 @@ services:
     privileged: true
     networks:
       - soc_net
+
+volumes:
+  opensearch-data:
+  wazuh-data:
 
 networks:
   soc_net:

@@ -1,0 +1,3 @@
+{"attributes":{"title":"MiniSOC - Auth Failures","visState":"{\"type\":\"histogram\",\"params\":{\"shareYAxis\":true}}"},"id":"minisoc-auth-fail","type":"visualization"}
+{"attributes":{"title":"MiniSOC - Rustyapa Exploit","visState":"{\"type\":\"table\",\"params\":{\"perPage\":10}}"},"id":"minisoc-rustyapa","type":"visualization"}
+{"attributes":{"title":"[MiniSOC] Alerts Overview","panelsJSON":"[{\"panelIndex\":1,\"gridData\":{\"x\":0,\"y\":0,\"w\":24,\"h\":15},\"version\":\"2.15.0\",\"type\":\"visualization\",\"id\":\"minisoc-auth-fail\"},{\"panelIndex\":2,\"gridData\":{\"x\":24,\"y\":0,\"w\":24,\"h\":15},\"type\":\"visualization\",\"id\":\"minisoc-rustyapa\"}]"},"id":"minisoc-dashboard","type":"dashboard"}

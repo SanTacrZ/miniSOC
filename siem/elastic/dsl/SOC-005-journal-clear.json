@@ -1,0 +1,22 @@
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "action|contains": "journal_clear"
+          }
+        }
+      ]
+    }
+  },
+  "meta": {
+    "rule_id": "SOC-005-journal-clear",
+    "title": "Audit Tamper / Journal Clear",
+    "level": "high",
+    "mitre": [
+      "attack.defense_evasion",
+      "attack.t1070"
+    ]
+  }
+}
