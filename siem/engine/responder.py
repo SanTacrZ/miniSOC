@@ -69,11 +69,19 @@ def run_playbook(alert: dict):
     executed=[]
     for pb in load_playbooks():
         trig = pb.get("trigger", {})
-        if trig.get("rule_id") != alert.get("rule_id"):
+        # trigger.rule_id acepta un id o una lista de ids (SOC-002 y SOC-006
+        # describen el mismo TTP de Rustyapa con señales distintas).
+        trig_ids = trig.get("rule_id")
+        if isinstance(trig_ids, str):
+            trig_ids = [trig_ids]
+        if not trig_ids or alert.get("rule_id") not in trig_ids:
             continue
-        # severity gate
-        if trig.get("severity") and trig["severity"] != alert.get("severity"):
-            continue
+        # severity gate (acepta una severidad o lista)
+        sev = trig.get("severity")
+        if sev:
+            sevs = [sev] if isinstance(sev, str) else list(sev)
+            if alert.get("severity") not in sevs:
+                continue
         if not pb.get("auto", False):
             print(f"[-] playbook {pb['id']} requires manual approval — skipping auto")
             continue

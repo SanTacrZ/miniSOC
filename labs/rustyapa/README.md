@@ -4,10 +4,11 @@
 
 ## Vulnerabilidad (resumen para hunt)
 
-- **Componente:** `Transaction::commit` (`src/main.rs:103`) hace `row.tags.extend(payload)` y `row.value += delta` con `target, delta, payload` controlados por atacante vía `Transactions → Deposit` (`src/main.rs:337`).
-- **Superficie:** `prompt_raw("note: ")` lee línea cruda sin límite, `payload` puede ser 5k+ → `tags` Vec<u8> crece sin cap.
-- **Lectura hunting:** `payload_len` grande + `delta` anómalo + `tags_len_after` escalado → alerta `SOC-002`.
-- **Wrapper:** `wrapper.py:1` hace tee JSONL `logs/rustyapa.jsonl` + `/tmp/soc_siem.jsonl` para SIEM.
+- **Componente:** `run_batch` (`src/main.rs:362`). El binario compilado emite **una** inicialización del slot de pila de `Transaction` pero **dos** llamadas a `Transaction::commit`, y `commit` toma `self` por valor y libera `ops: Vec<u32>` + `payload: Vec<u8>` → la 2ª transacción trabaja sobre buffers liberados (**UAF + doble free**, dos chunks de `0x20`).
+- **Disparador:** `Transactions → 3. Batch transfer`. **No** hace falta `Deposit`.
+- **Superficie real:** 17 bytes fijos (`"batch-out"` + `"batch-in"`) escritos por el propio binario → **sin payload grande ni metacharacteres**. Por eso `SOC-002` (`payload_len > 4096`) NO lo detecta.
+- **Lectura hunting:** `action == "batch"` y/o `abort_signature` de glibc en `stderr_tail` → alerta `SOC-006`. Secundario: `journal_ops == 6 and journal_delta == 0`.
+- **Wrapper:** `wrapper.py:1` hace tee JSONL `logs/rustyapa.jsonl` + `/tmp/soc_siem.jsonl`, y desde esta revisión **captura stderr** para registrar el abort de glibc.
 
 ## Uso
 
@@ -24,12 +25,13 @@ python labs/rustyapa/exploit.py --level 2 --spray 5 --size 5000
 
 # 4. Ver detección
 cat logs/rustyapa.jsonl | jq
-python siem/engine/engine.py  # o curl http://localhost:8001/alerts
+python -m siem.engine.engine  # o curl http://localhost:8001/alerts
 ```
 
 ## Integración SOC
 
-- **Regla:** `siem/rules/sigma_like/rustyapa_exploit.yml:1` → `payload_len>4096` OR `note contains '; $('`
+- **Regla (TTP real):** `siem/rules/sigma_like/rustyapa_batch_uaf.yml:1` → `SOC-006` (`action == batch` → high, `rustyapa_abort` → critical)
+- **Regla (lab/simulador):** `siem/rules/sigma_like/rustyapa_exploit.yml:1` → `SOC-002` (`payload_len>4096`) — **falso negativo** contra el exploit real
 - **Playbook:** `docs/incident_playbooks.md#PB-02`
 - **Hipótesis:** `docs/hunting_hypotheses.md#H-01`
 

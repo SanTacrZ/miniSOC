@@ -15,11 +15,19 @@ logs/*.log
 logs/*.hash*
 logs/blocklist.json
 logs/revoked.jsonl
+logs/.soar_done
+logs/findings.json
+cloud_audit/findings.json
 alerts/*.json
 alerts/*.jsonl
+
+# Snapshots de evidencia generados por SOAR (uno por alerta)
+labs/evidence/*/
 infra/keys/*.key
 infra/keys/*.pub
 infra/users.json
+# estado en runtime: contiene password_hash
+api/infra/users.json
 
 # OS
 .DS_Store

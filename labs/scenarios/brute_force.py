@@ -18,7 +18,7 @@ def main():
             with open("/tmp/soc_siem.jsonl","a") as f2: f2.write(json.dumps(evt)+"\n")
             print(f"offline emit {i}")
         time.sleep(0.2)
-    print("[+] done - check siem: python siem/engine/engine.py")
+    print("[+] done - check siem: python -m siem.engine.engine")
 
 if __name__=="__main__":
     main()

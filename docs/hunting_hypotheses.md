@@ -6,21 +6,53 @@ Cada hipótesis tiene: *idea, datos necesarios, query SIEM, validación, regla r
 
 ---
 
-## H-01 — Rustyapa Heap Spray via Tags
+## H-01 — Rustyapa: UAF vía Batch transfer (sin payload grande)
 
-- **Hipótesis:** Un atacante que explota `Transaction::commit` hará crecer `tags` con payloads grandes y repetirá `deposit` muchas veces antes de `commit` para spray heap. Veremos `payload_len` p95 + `tags_len` escalada.
+- **Hipótesis (corregida):** El exploit real **no** hace heap spray con payloads
+  grandes. `run_batch` inicializa el slot de `Transaction` una vez y llama dos
+  veces a `commit(self)` (que libera `ops`+`payload`) → UAF y doble free sobre
+  dos chunks de `0x20`. Basta **una** llamada a `Transactions → 3. Batch
+  transfer` con `payload_len=17`. Veremos `action == "batch"` y/o un abort de
+  glibc en stderr, **no** `payload_len` elevado.
 
-- **Datos:** `logs/rustyapa.jsonl` → campos `payload_len`, `tags_len_before`, `tags_len_after`, `delta`, `ops_len`.
+- **Por qué la hipótesis anterior fallaba:** asumía spray vía `Deposit`
+  (`payload_len > 4096`). Eso sólo ocurre en el simulador del lab. Contra el TTP
+  real, `SOC-002` es un **falso negativo**.
+
+- **Datos:** `logs/rustyapa.jsonl` → `action`, `abort_signature`, `stderr_tail`,
+  `returncode`, `src_ip`, `journal_ops`, `journal_delta`.
 
 - **Hunt (jq):**
   ```bash
-  jq -s 'map(select(.svc=="rustyapa")) | map(.payload_len) | sort' logs/rustyapa.jsonl | tail
-  jq 'select(.svc=="rustyapa" and .payload_len>2000) | {ts, src_ip, payload_len, delta}' logs/rustyapa.jsonl
+  # 1) Uso de la superficie vulnerable (raro en operación legítima)
+  jq 'select(.svc=="rustyapa" and .action=="batch") | {ts, src_ip, payload_len, delta}' logs/rustyapa.jsonl
+
+  # 2) Abort de glibc = corrupción de heap confirmada
+  jq 'select(.action=="rustyapa_abort") | {ts, src_ip, abort_signature, returncode}' logs/rustyapa.jsonl
+
+  # 3) Fase de leak: ráfaga de conexiones cortas del mismo origen
+  jq -r 'select(.svc=="rustyapa") | "\(.src_ip) \(.action)"' logs/rustyapa.jsonl \
+    | sort | uniq -c | sort -rn | head
+
+  # 4) Anomalía de journal: la 2ª transacción sale ops=6 delta=0
+  jq 'select(.journal_ops==6 and .journal_delta==0)' logs/rustyapa.jsonl
   ```
 
-- **Validación:** Reproducir con `labs/rustyapa/exploit.py --spray 100 --size 3000` y ver si trigger `rustyapa_exploit.yml` (esperado true positive). Falso positivo: legítimo `note` grande → ajustar threshold a 4096.
+- **Validación (true positive real):**
+  ```bash
+  # genera el TTP real: batch (17 bytes) + abort
+  python labs/rustyapa/wrapper.py --simulate-batch
+  # contra el binario de verdad (el abort lo captura el wrapper):
+  printf '3\n3\n0\n1\n100\n0\n0\n' | python labs/rustyapa/wrapper.py --binary ./labs/rustyapa/RUSTyapa
+  ```
+  Esperado: `SOC-006` `high` por el `batch` y `critical` por el abort.
+  Falso positivo a vigilar: restart del jail con `returncode -6` por OOM →
+  descartar comprobando que `abort_signature` sea una cadena de glibc.
 
-- **Automatizar:** `siem/rules/sigma_like/rustyapa_exploit.yml` → `payload_len >4096`.
+- **Automatizar:** `siem/rules/sigma_like/rustyapa_batch_uaf.yml` →
+  `SOC-006-rustyapa-batch-uaf`, con rama propia en
+  `siem/engine/engine.py:check_sigma_rules` (el motor despacha por `rule_id`,
+  no evalúa Sigma de forma genérica) y disparo de `PB-RUSTYAPA-AUTO`.
 
 ---
 

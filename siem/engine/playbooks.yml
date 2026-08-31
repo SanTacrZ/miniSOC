@@ -23,8 +23,10 @@ playbooks:
   - id: PB-RUSTYAPA-AUTO
     name: "Containment Rustyapa exploit"
     trigger:
-      rule_id: SOC-002-rustyapa-exploit
-      severity: high
+      # SOC-002 = payload grande / metachars (lab, poco fiel)
+      # SOC-006 = TTP real: Batch transfer (run_batch UAF) + abort de glibc
+      rule_id: [SOC-002-rustyapa-exploit, SOC-006-rustyapa-batch-uaf]
+      severity: [high, critical]
     actions:
       - type: block_ip
         ttl: 3600

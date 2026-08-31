@@ -92,6 +92,19 @@ def check_sigma_rules(events: list[dict], rules: list[dict]):
                     note = raw.get("note","")
                     if plen>4096 or any(s in str(note) for s in [";","$(","`","flag"]):
                         alerts.append(emit_alert(rule, [e]))
+        elif rule.get("id")=="SOC-006-rustyapa-batch-uaf":
+            # TTP real de PB-02: run_batch UAF. No depende de payload_len.
+            # Dispara por (a) invocacion de Batch transfer o (b) abort de glibc.
+            for e in events:
+                raw = e.get("raw", {})
+                if raw.get("svc") != "rustyapa":
+                    continue
+                if raw.get("action") == "batch":
+                    alerts.append(emit_alert(rule, [e], severity="high",
+                                  title="Rustyapa Batch transfer (run_batch UAF path)"))
+                elif raw.get("action") == "rustyapa_abort":
+                    alerts.append(emit_alert(rule, [e], severity="critical",
+                                  title=f"Rustyapa heap corruption: {raw.get('abort_signature','?')}"))
         elif rule.get("id")=="SOC-003-priv-esc":
             for e in events:
                 if e["action"].startswith("GET /admin") or e["action"].startswith("POST /admin"):

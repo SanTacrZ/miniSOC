@@ -16,5 +16,5 @@ case $SCENARIO in
     ;;
   *) echo "unknown $SCENARIO — options: brute-force|exfil|rustyapa-pwn|cloud|all" ;;
 esac
-echo "[*] Now run SIEM: source .venv/bin/activate && python siem/engine/engine.py"
+echo "[*] Now run SIEM: source .venv/bin/activate && python -m siem.engine.engine"
 echo "[*] Or check alerts: cat logs/alerts.jsonl | jq"

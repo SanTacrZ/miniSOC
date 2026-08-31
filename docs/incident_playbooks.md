@@ -24,22 +24,99 @@
 
 ---
 
-## PB-02 — Rustyapa Exploit (`T1190`)
+## PB-02 — Rustyapa Exploit (`T1190`) — UAF en `run_batch`
 
-**Detección:** `rustyapa_exploit.yml` → `payload_len >4096` OR `tags` con `; | $()` OR `row.value` delta anormal.
+> **Severidad `P1 critical`** cuando hay abort de glibc; `P2 high` si sólo aparece `Batch transfer`.
+> Actualizado con el análisis real del binario (`rustc 1.96.1`, glibc 2.42).
 
-**Análisis (SOC Analyst loop):**
-1. **Alerta** → `evidence/rustyapa_<ts>/alert.json`
-2. **Evidencia** → `logs/rustyapa.jsonl` líneas con `event_id` correlacionado.
-3. **Timeline:** `python siem/engine/timeline.py --alert alert-xyz.json` genera `timeline.jsonl` ordenado.
-4. **Hunt:** ¿Hay `commit` con `delta` negativo grande seguido de `value` jump? → verifica `journal` de Rustyapa.
-5. **Valida:** Reproducir en `labs/rustyapa/` con mismo payload (`exploit.py --replay <hex>`).
+### Root cause (lo que de verdad pasa)
 
-**Contención:** Wrapper mata proceso Rustyapa y reinicia con `jail` fresh (`labs/rustyapa/wrapper.py --restart`).
+El binario compilado de `run_batch` inicializa el slot de pila de `Transaction`
+**una vez** pero llama **dos veces** a `Transaction::commit(self)`, y `commit`
+toma `self` por valor y libera `ops: Vec<u32>` y `payload: Vec<u8>`:
 
-**Erradicación:** Parchear validación `note` length en `wrapper.py` (defensa delante del binario vulnerable) o firewall payload.
+```
+objdump: Transaction::new() en 0x15cf7 / 0x173c7 / 0x176e4   (3)
+         commit()           en 0x15e14 / 0x17524 / 0x17812 / 0x17924  (4)
+```
 
-**Lecciones:** Documentar en `labs/evidence/postmortem.md` con MITRE `T1190`.
+La 2ª transacción reutiliza buffers ya liberados → **UAF + doble free** sobre dos
+chunks de `0x20`. Disparador: `Transactions → 3. Batch transfer`.
+
+### Kill chain observada
+
+| Fase | Acción del atacante | Señal |
+|---|---|---|
+| 1 | `3 → 3 → src=0 dst=1 amount=100` | `action: batch` — **17 bytes**, sin metachars |
+| 2 | Navega 1-2 menús | `malloc(): unaligned fastbin chunk detected 3` (glibc 2.42) |
+| 3 | Sale con `0` | `free(): double free detected in tcache 2` |
+| 4 | Reconecta ~6× repitiendo 1 | ráfaga de conexiones cortas desde el mismo `src_ip` |
+| 5 | Con el heap base filtrado, envenena el tcache | RCE → `cat /app/flag.txt` |
+
+Fase 4 es la huella de red: el leak del heap sólo es legible cuando los 8 bytes
+del puntero `fd` sobreviven a `String::from_utf8_lossy`, así que el atacante
+**reconecta hasta acertar** (~6 intentos, medidos).
+
+### Detección
+
+- **Regla nueva:** `siem/rules/sigma_like/rustyapa_batch_uaf.yml` → `SOC-006-rustyapa-batch-uaf`
+  - `action == "batch"` → `high`
+  - `action == "rustyapa_abort"` → `critical`
+- **⚠️ Gap cerrado:** `SOC-002` (`payload_len > 4096`) **NO detecta este ataque**.
+  El payload real son 17 bytes fijos que escribe el propio binario; el atacante
+  nunca envía un payload grande. `SOC-002` sólo salta con el spray sintético del
+  lab → falso negativo en el TTP real.
+- IOC de alta fidelidad (stderr del jail / `rustyapa_abort.stderr_tail`):
+  - `free(): double free detected in tcache 2`
+  - `malloc(): unaligned fastbin chunk detected 3` (glibc 2.42)
+  - `malloc(): unaligned tcache chunk detected` (glibc 2.43)
+  - `returncode == -6` (SIGABRT)
+
+### Análisis
+
+1. Alerta → `alerts/alert-<id>.json`; evidencia en `logs/rustyapa.jsonl`.
+2. Confirmar el TTP real (no el simulado):
+   ```bash
+   jq 'select(.svc=="rustyapa" and (.action=="batch" or .action=="rustyapa_abort"))' logs/rustyapa.jsonl
+   jq 'select(.action=="rustyapa_abort") | {ts, src_ip, abort_signature, returncode}' logs/rustyapa.jsonl
+   ```
+3. Fase de leak (conexiones cortas en ráfaga):
+   ```bash
+   jq -r 'select(.svc=="rustyapa") | .src_ip' logs/rustyapa.jsonl | sort | uniq -c | sort -rn | head
+   ```
+   > 5 conexiones cortas del mismo IP en <2 min = leak loop en curso.
+4. Timeline: `python siem/engine/timeline.py --alert alerts/alert-<id>.json`.
+5. Anomalía de journal (observable en `Journal → 1`): el `commit` de la 2ª
+   transacción sale con **`ops=6 delta=0`** en vez de `ops=3 delta=<amount>`,
+   porque reutiliza el struct viejo (`3+3` ops, `-amount + amount`).
+
+### Contención
+
+- Automática: `PB-RUSTYAPA-AUTO` (`playbooks.yml`) → `block_ip` 3600s +
+  `kill_rustyapa` + `snapshot_evidence`. Dispara con `SOC-002` **o** `SOC-006`.
+- Manual: `python -c "from siem.engine.responder import run_playbook; run_playbook({'rule_id':'SOC-006-rustyapa-batch-uaf','severity':'critical','alert_id':'manual'})"`
+
+### Erradicación
+
+El problema **no** es la longitud del `note` — parchear eso no corta el ataque.
+Opciones, de mejor a peor:
+
+1. **Código:** en `run_batch`, construir un `Transaction` nuevo por cada
+   `transaction(...)` (o pasar `&mut self` a `commit` y no liberar dos veces).
+   Verificar compilando el fuente con `rustc 1.96.1` y comprobando que el
+   codegen emite **2** inicializaciones.
+2. **Binario:** recompilar con un toolchain que no reutilice el slot
+   (reproducido: con 1.97.x no se reproduce el fallo).
+3. **Compensatorio:** el wrapper debe denegar `Batch transfer` (menú `3 → 3`) o
+   reiniciar el jail tras N=1 usos — es la única superficie del UAF.
+
+### Recuperación / Lecciones
+
+- Rotar el flag y cualquier credencial del jail; el exploit termina en lectura
+  de `/app/flag.txt`.
+- Postmortem en `labs/evidence/postmortem.md` con MITRE `T1190` + `T1068`.
+- Lección de detección: **una regla basada en tamaño de payload asume el TTP
+  equivocado**. Validar siempre contra el exploit real, no contra el simulador.
 
 ---
 

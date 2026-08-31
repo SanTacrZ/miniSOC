@@ -1,0 +1,27 @@
+title: "Rustyapa Batch-Transfer UAF / Heap Corruption"
+id: SOC-006-rustyapa-batch-uaf
+level: critical
+status: experimental
+description: >
+  Explotacion real de RUSTyapa: `Transactions -> 3. Batch transfer` (run_batch).
+  run_batch inicializa el slot de pila de Transaction una sola vez pero llama dos
+  veces a `commit(self)`, y commit libera `ops`/`payload` -> use-after-free +
+  doble free sobre dos chunks de 0x20. El atacante NO necesita payload grande ni
+  metacharacteres: el payload son 17 bytes fijos, asi que SOC-002
+  (`payload_len > 4096`) NO detecta este TTP. Señal: invocacion de `batch` y/o
+  abort de glibc en stderr.
+tags: ["attack.initial_access", "attack.t1190", "attack.execution"]
+detection:
+  selection_batch:
+    svc: rustyapa
+    action: "batch"
+  selection_abort:
+    svc: rustyapa
+    action: "rustyapa_abort"
+  condition: selection_batch or selection_abort
+falsepositives:
+  - "Uso legitimo de Batch transfer (raro - revisar volumen)"
+  - "Restart del jail que deje returncode -6 por OOM del jail, no por UAF"
+references:
+  - "docs/incident_playbooks.md#PB-02"
+  - "docs/hunting_hypotheses.md#H-01"
