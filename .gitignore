@@ -23,6 +23,9 @@ alerts/*.jsonl
 
 # Snapshots de evidencia generados por SOAR (uno por alerta)
 labs/evidence/*/
+
+# Binario vulnerable del lab (se monta, no se versiona)
+labs/rustyapa/bin/
 infra/keys/*.key
 infra/keys/*.pub
 infra/users.json
