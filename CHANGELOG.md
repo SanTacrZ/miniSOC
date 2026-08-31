@@ -55,3 +55,16 @@ Todas las notas en formato Keep a Changelog + SemVer. Repo: https://github.com/S
 - `siem/engine` + 5 reglas Sigma (`brute_force.yml`, `rustyapa_exploit.yml`, `priv_esc_api.yml`, `large_payload.yml`, `audit_tamper.yml`)
 - Docs NIST: `nist_mapping.md`, `architecture.md`, `threat_models.md`, `incident_playbooks.md`, `hunting_hypotheses.md`
 - Toolchain verificado con `.venv` (Python 3.14)
+
+## [0.5.0] - 2026-08-31 — Purple Team Emulator + Metrics + Compliance + CI
+
+### Added
+- **Attack Emulator:** `scripts/attack_emulator.py` 4 chains ATT&CK (full/rustyapa-only/cloud-misconfig/initial-access) 7 TTps T1078/T1110/T1190/T1059/T1548/T1041/T1098 con `src_ip` y `speed`, emite `mitre_technique` a `logs/siem.jsonl` para SIEM
+- **Metrics Dashboard:** `siem/dashboards/metrics.py` MTTD/MTTR/P95/SLA P1 (<15m) `by_rule`/`by_severity` + `--html` para `labs/evidence/metrics.html`
+- **Compliance Score:** `scripts/compliance_score.py` + `docs/COMPLIANCE_SCORE.md` scoring CSF 6 funciones (global 81/100) desde `cloud_audit`, `pytest`, `mTLS`, `detect`; usado en CI gate
+- **CI:** `.github/workflows/ci.yml` purple-team (pip check, pytest, cloud_audit, sigma→elastic, emulator smoke, metrics+compliance gate 75, mTLS verify)
+- **IAM JIT:** `api/app/rbac/time_based.py` grant_temporary 4h + auto-revoke AC-2(3) para `responder`
+
+### Verified
+- `attack_emulator --chain initial-access` → 7 alerts SOC-002/SOC-001, `metrics --json` MTTD 201s SLA 100%, `compliance --json` global 81, `pytest` 9 passed
+

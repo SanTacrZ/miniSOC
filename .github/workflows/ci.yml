@@ -1,0 +1,36 @@
+name: miniSOC CI — purple-team
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+          pip install -r api/requirements.txt
+          bash scripts/check_libs.sh
+      - name: Pytest (repository pattern)
+        run: python -m pytest api/tests -v
+      - name: Cloud audit
+        run: python -m cloud_audit.checks.runner
+      - name: Sigma → Elastic
+        run: python siem/tools/sigma_to_elastic.py --check
+      - name: Attack emulator smoke
+        run: python scripts/attack_emulator.py --chain initial-access --speed 10 && python -c "from siem.engine.engine import poll_once; a=poll_once(); assert len(a)>=1, 'no alerts'"
+      - name: Metrics + Compliance
+        run: |
+          python siem/dashboards/metrics.py --json
+          python scripts/compliance_score.py --json | tee compliance.json
+          python -c "import json; s=json.load(open('compliance.json')); assert s['global']>=75, f\"score {s['global']} <75\""
+      - name: mTLS certs
+        run: test -f infra/certs/ca.crt && openssl verify -CAfile infra/certs/ca.crt infra/certs/api.crt
