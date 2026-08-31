@@ -46,3 +46,6 @@ api/infra/users.json
 labs/evidence/*.json
 infra/certs/*.key
 infra/certs/*.srl
+# Lab externo no SOC
+*.bas
+script

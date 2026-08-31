@@ -1,0 +1,17 @@
+{
+  "query": {
+    "bool": {
+      "must": []
+    }
+  },
+  "meta": {
+    "rule_id": "SOC-006-rustyapa-batch-uaf",
+    "title": "Rustyapa Batch-Transfer UAF / Heap Corruption",
+    "level": "critical",
+    "mitre": [
+      "attack.initial_access",
+      "attack.t1190",
+      "attack.execution"
+    ]
+  }
+}
